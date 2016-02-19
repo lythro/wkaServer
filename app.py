@@ -23,7 +23,7 @@ class Controller(object):
 		self.rotor = []
 
 		if not NO_MUT:
-			self.port = serial.Serial( '/dev/ttyAMA0', timeout=5, \
+			self.port = serial.Serial( '/dev/ttyAMA0', timeout=0.5, \
 										baudrate=9600 )
 			print 'BAUDRATE:', port.getBaudrate()
 
@@ -187,6 +187,10 @@ class UserManager(object):
 		self.lock = threading.Lock()
 
 		with self.lock:
+			# TODO create users... differently.
+			# especially don't store passwords in
+			# a source file that's publicly available
+			# at github.
 			user = User( 'TestUser1', '123' )
 			self.users[user.name] = user
 
@@ -263,6 +267,7 @@ def login():
 		for u in online:
 			flash( u )
 
+		session['user'] = name
 		session['ssid'] = ssid
 		session['logged_in'] = True
 	return redirect( '/' )
@@ -272,6 +277,7 @@ def login():
 def hello_world():
 	return render_template( 'index.html' )
 
+
 @app.route('/poll')
 def dataPoll():
 	lastTick = int(request.args.get( 'lastTick', 0 ))
@@ -280,6 +286,27 @@ def dataPoll():
 	print data
 	
 	return jsonify( data )
+
+@app.route('/exec', methods = ['POST'] )
+def execute():
+	# check for login!
+	name = session.get( 'user', '' )
+	key = session.get( 'ssid', '' )
+
+	if not users.checkLogin( name, key ):
+		return 'Unauthorized. Session timed out?'
+
+	# assert: key matches the name and is not expired yet.
+	# --> allowed to execute commands!
+	cmd = request.form.get( 'cmd', '' )
+	print 'EXEC:', cmd
+	if not NO_MUT:
+		r = controller.execCommand( cmd + '\n' )
+	else:
+		r = 'NO_MUT: ' + cmd + '\n'
+	print 'RETURN:', r
+	return r
+
 
 def updateLoop():
 	while True:	

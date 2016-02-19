@@ -35,8 +35,9 @@
 							<input type='submit'>
 						</form>
 					{% else %}
+						<span style="font-size: 14;"> You are logged in as {{ session.user }}. <a href='/logout'>logout</a> </span>
 						<textarea id="consoleOut" readonly style="width: 100%; height: 70%;"> </textarea> <br>
-						<input type='text' id="consoleIn" width=200> </input>
+						<input type='text' id="consoleIn" style="width: 100%;"> </input>
 
 						<!-- code to send inputs to the console and output the return messag -->
 						<script>
@@ -46,8 +47,19 @@
 									outtext = $('#consoleOut').text();
 
 									$('#consoleOut').text( outtext + intext + '\r\n' );
+									$('#consoleOut').scrollTop( $('#consoleOut')[0].scrollHeight );
+
 									console.log( intext );
+
 									$('#consoleIn').val( '' );
+
+									$.post( '/exec', { 'cmd' : intext },
+										function(data){
+											outtext = $('#consoleOut').text();
+											$('#consoleOut').text( outtext + data );
+											$('#consoleOut').scrollTop( $('#consoleOut')[0].scrollHeight );
+										},
+										'text' );
 								}
 							});
 						</script>
