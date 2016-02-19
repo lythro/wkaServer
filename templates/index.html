@@ -1,0 +1,203 @@
+<html style="height: 100%">
+
+<head>
+	<!-- Plotly.js -->
+	<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+	<script type="text/javascript" src="static/jquery.js"></script>
+</head>
+
+<body style="height: 100%">
+  	<div id='currentStatus' style="width: 50%; height:40px; align:center; margin-top: 10px;">
+		<table style="font-size:20; margin: 0 auto; width:50%;">
+			<tr><td>rpm:</td><td id='currentRPM'> <td>power:</td><td id='currentPower'></td></tr>
+		</table>
+	</div>
+
+	<table style="width: 100%; height: 50%; cellspacing: 0; cellpadding: 0;">
+		<tr>
+			<td style="width: 50%;"><div id="plotSmall"><!-- Plotly chart will be drawn inside this DIV --></div></td>
+			<td>
+				{% with messages = get_flashed_messages() %}
+					{% if messages %}
+					<ul class=flashes>
+						{% for message in messages %}
+							<li>{{ message }}</li>
+						{% endfor %}
+					</ul>
+					{% endif %}
+				{% endwith %}
+				<div id="console" style="width: 100%; height: 100%">
+					{% if not session.logged_in %}
+						Login to access the console.
+						<form action="/login" method="POST">
+							<input type='text' id='username' name='username' placeholder='username'> <br>
+							<input type="password" id="password" name="password" placeholder='password'> <br>
+							<input type='submit'>
+						</form>
+					{% else %}
+						<textarea id="consoleOut" readonly style="width: 100%; height: 70%;"> </textarea> <br>
+						<input type='text' id="consoleIn" width=200> </input>
+
+						<!-- code to send inputs to the console and output the return messag -->
+						<script>
+							$('#consoleIn').keypress(function(e) {
+								if (e.which == 13) {
+									intext = $('#consoleIn').val();
+									outtext = $('#consoleOut').text();
+
+									$('#consoleOut').text( outtext + intext + '\r\n' );
+									console.log( intext );
+									$('#consoleIn').val( '' );
+								}
+							});
+						</script>
+
+					{% endif %}
+					
+				</div>
+			</td>
+
+
+		</tr>
+		<tr>
+			<td colspan="2"><div id="plotBig" style="width: 100%;"><!-- Plotly chart will be drawn inside this DIV --></div></td>
+		</tr>
+	</table>
+
+	<script>
+		var lastTick = 0;
+		var plotdata = [
+			{
+				x: [],
+				y: [],
+				name: 'rotor',
+				type: 'scatter',
+				marker: { color: '#FF8000' },
+				yaxis: 'y2'
+			}, {
+				x: [],
+				y: [],
+				name: 'power',
+				type: 'scatter',
+				marker: { color: '#0080FF' }
+			}];
+		
+		var plotdataBig = [
+			{
+				x: [],
+				y: [],
+				marker: { color: '#FF8000' },
+				name: 'rotor',
+				type: 'scatter',
+				yaxis: 'y2'
+			}, {
+				x: [],
+				y: [],
+				name: 'power',
+				type: 'scatter',
+				marker: { color: '#0080FF' }
+			}];
+
+		
+		var layout = {
+			title: '5 minutes',
+			yaxis: {
+				title: 'power kW',
+				overlaying: 'y2',
+				anchor: 'x',
+				rangemode: 'tozero',
+				side: 'right',
+				titlefont: { color: '#0080FF' }
+			},
+			yaxis2: {
+				title: 'rotor rpm',
+				side: 'left',
+				anchor: 'x',
+				rangemode: 'tozero',
+				titlefont: { color: '#FF8000' }
+			},
+			legend: {
+				xref: 'paper',
+				x : 1.1
+			}
+		};
+
+		var layoutBig = {
+			title: '2 hours',
+			yaxis: {
+				title: 'power kW',
+				anchor: 'x',
+				overlaying: 'y2',
+				rangemode: 'tozero',
+				side: 'right',
+				titlefont: { color: '#0080FF' }
+			},
+			yaxis2: {
+				title: 'rotor rpm',
+				side: 'left',
+				anchor: 'x',
+				rangemode: 'tozero',
+				titlefont: { color: '#FF8000' }
+			},
+			legend: {
+				xref: 'paper',
+				x : 1.1
+			}
+		};
+
+
+		Plotly.newPlot('plotSmall', plotdata, layout);
+		Plotly.newPlot('plotBig', plotdataBig, layoutBig);
+
+		
+		(function poll() {
+			var poll_interval = 0;
+			console.debug( 'poll!' );
+
+		$.ajax({ dataType: 'json', url: '/poll', data: {'lastTick' : lastTick, 'amount' : 3600}, success: function(data) {
+				plotdata[1].x = plotdata[1].x.concat( data.time );
+				plotdata[1].y = plotdata[1].y.concat( data.power );
+
+				plotdata[0].x = plotdata[0].x.concat( data.time );
+				plotdata[0].y = plotdata[0].y.concat( data.rotor );
+
+				plotdataBig[1].x = plotdataBig[1].x.concat( data.time );
+				plotdataBig[1].y = plotdataBig[1].y.concat( data.power );
+
+				plotdataBig[0].x = plotdataBig[0].x.concat( data.time );
+				plotdataBig[0].y = plotdataBig[0].y.concat( data.rotor );
+
+				lastTick = data.tick
+
+				/* update the 'latest data' view */
+				if (!$.isArray(data.power))
+				{
+					$('#currentPower').html( data.power );
+					$('#currentRPM').html( data.rotor );
+				}
+
+				
+				/* never keep more than n (150) values on the screen. TODO: make this variable */
+				while (plotdata[0].x.length > 150) { plotdata[0].x.shift(); plotdata[0].y.shift(); }
+				while (plotdata[1].x.length > 150) { plotdata[1].x.shift(); plotdata[1].y.shift(); }
+				while (plotdataBig[0].x.length > 3600) { plotdataBig[0].x.shift(); plotdataBig[0].y.shift(); }
+				while (plotdataBig[1].x.length > 3600) { plotdataBig[1].x.shift(); plotdataBig[1].y.shift(); }
+				
+				Plotly.redraw( 'plotSmall' );
+				Plotly.redraw( 'plotBig' );
+				console.debug( data );
+				
+				poll_interval = 0;
+			}, error: function() { poll_interval = 5000; }, complete: function() { setTimeout(poll, poll_interval); }});
+		})();
+
+
+		$(document).ready(function() {
+			/* init by call for data */
+		});
+
+	</script>
+
+</body>
+
+</html>
