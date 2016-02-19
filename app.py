@@ -134,7 +134,7 @@ class User(object):
 
 		self.__sessionKey = None
 		self.__sessionAssignTime = time.time()
-		self.__sessionValidHours = 1
+		self.__sessionValidHours = 4
 
 		self.__lock = threading.Lock()	# for thread-safety
 
@@ -158,12 +158,13 @@ class User(object):
 			self.__sessionAssignTime = time.time()
 
 	def removeSessionKey(self):
-		with self.__lock:
-			self.__sessionKey = None
+		self.__sessionKey = None
 
 
 	def checkSessionKey(self, key):
+		print 'CHECKSESSIONKEY'
 		with self.__lock:
+			print '  got the lock!'
 			# has a key been assigned?
 			if self.__sessionKey == None:
 				return False
@@ -211,6 +212,7 @@ class UserManager(object):
 
 	def checkLogin(self, name, key):
 		''' given a username and a session key: check if valid '''
+		print 'CHECKLOGIN'
 		with self.lock:
 			user = self.users.get( name, None )
 
@@ -235,6 +237,16 @@ class UserManager(object):
 		ssid = self.__createSessionKey()
 		user.setSessionKey( ssid )
 		return ssid
+
+	def logout(self, name):
+		''' no checks, just logout '''
+		# TODO: without checks, one could force-quit another user...
+		# or not? hm. username to logout is stored in the session,
+		# and the session is cryptographically signed. should be safe.
+
+		user = self.users[name]
+		user.removeSessionKey()
+
 
 
 
@@ -271,7 +283,23 @@ def login():
 		session['ssid'] = ssid
 		session['logged_in'] = True
 	return redirect( '/' )
-		
+	
+
+@app.route('/online')
+def online():
+	l = users.getOnlineUsers()
+	return jsonify( {'online' : l} )
+
+@app.route('/logout')
+def logout():
+	name = session.get( 'user', '' )
+	session['logged_in'] = False
+	del session['ssid']
+	del session['user']
+	
+	users.logout( name )
+	return redirect( '/' )
+
 
 @app.route('/')
 def hello_world():
@@ -289,11 +317,13 @@ def dataPoll():
 
 @app.route('/exec', methods = ['POST'] )
 def execute():
+	print 'START OF EXCECUTE'
 	# check for login!
 	name = session.get( 'user', '' )
 	key = session.get( 'ssid', '' )
 
 	if not users.checkLogin( name, key ):
+		print 'unauthorized exec attempt!'
 		return 'Unauthorized. Session timed out?'
 
 	# assert: key matches the name and is not expired yet.
@@ -305,6 +335,7 @@ def execute():
 	else:
 		r = 'NO_MUT: ' + cmd + '\n'
 	print 'RETURN:', r
+	print 'END OF EXCECUTE'
 	return r
 
 

@@ -203,12 +203,29 @@
 			}, error: function() { poll_interval = 5000; }, complete: function() { setTimeout(poll, poll_interval); }});
 		})();
 
+		(function poll_online() {
+			var poll_interval_online = 10000;
+			console.log( 'poll online!' );
+
+		$.ajax({ dataType: 'json', url: '/online', success: function(data) {
+				console.log( data.online );
+				var txt = 'online | ';
+				for (var i = 0; i < data.online.length; i++)
+				{
+					txt += data.online[i] + ' | ';
+				};
+				$('#online').text( txt );
+			}, error: function(){ poll_interval = 20000; }, complete: function(){ setTimeout(poll_online, poll_interval_online); } });
+		})();
+
 
 		$(document).ready(function() {
 			/* init by call for data */
 		});
 
 	</script>
+
+	<span id='online' style='font-size: 14;'></span>
 
 </body>
 
