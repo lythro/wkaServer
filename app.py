@@ -23,28 +23,32 @@ class Controller(object):
 		self.rotor = []
 
 		if not NO_MUT:
-			self.port = serial.Serial( '/dev/ttyAMA0', timeout=0.5, \
+			self.port = serial.Serial( '/dev/ttyAMA0', timeout=2, \
 										baudrate=9600 )
 			print 'BAUDRATE:', port.getBaudrate()
 
 		self.update()
 
 	def execCommand(self, cmd):
-		port.write( cmd )
 		x = ''
-		while True:
-			# read until ..
-			r = port.read(1)
-			# .. timeout
-			if len(r) < 1:
-				break
-			x += r
-			# or 'MUT>' signals end of transmission
-			if x.endswith( 'MUT>\r\n' ):
-				print 'ENDSWITH!', x
-				#break #TODO
-
+		timeout = False
+		with self.lock:
+			port.write( cmd )
+			while True:
+				# read until ..
+				r = port.read(1)
+				# .. timeout or ..
+				if len(r) < 1:
+					timeout = True
+					break
+				x += r
+				# .. 'MUT>' signals end of transmission
+				if x.endswith( 'MUT>\r\n' ):
+					print 'ENDSWITH!', x
+					#break #TODO
+		x += '(something went wrong, a timeout occured!)\n'
 		return x
+
 
 	def getRotorRounds(self):
 		if NO_MUT:
@@ -106,16 +110,12 @@ class Controller(object):
 	def update(self):
 		''' method to get one more data point for periodic data logging '''
 
+		# communication
+		p = self.getPower()
+		r = self.getRotorRounds()
+
 		with self.lock:
 			self.currentTick += 1
-		
-			# test values
-			'''
-			'''
-
-			# communication
-			p = self.getPower()
-			r = self.getRotorRounds()
 
 			self.power.append( abs(p) )
 			self.rotor.append( abs(r) )
@@ -125,6 +125,7 @@ class Controller(object):
 				self.power.pop(0)
 				self.time.pop(0)
 				self.rotor.pop(0)
+
 
 
 class User(object):
@@ -162,9 +163,7 @@ class User(object):
 
 
 	def checkSessionKey(self, key):
-		print 'CHECKSESSIONKEY'
 		with self.__lock:
-			print '  got the lock!'
 			# has a key been assigned?
 			if self.__sessionKey == None:
 				return False
@@ -198,6 +197,9 @@ class UserManager(object):
 			user = User( 'TestUser2', 'abc' )
 			self.users[user.name] = user
 
+
+
+
 	def getOnlineUsers(self):
 		l = []
 		with self.lock:
@@ -212,7 +214,6 @@ class UserManager(object):
 
 	def checkLogin(self, name, key):
 		''' given a username and a session key: check if valid '''
-		print 'CHECKLOGIN'
 		with self.lock:
 			user = self.users.get( name, None )
 
@@ -264,20 +265,18 @@ def login():
 	name = request.form.get( 'username', '' )
 	pw = request.form.get( 'password', '' )
 
-	print 'LOGIN', name, pw
-
 	ssid = users.login( name, pw )
 	if not ssid:
 		flash( 'incorrect username/password' )
 		session['logged_in'] = False
 	else:
-		online = users.getOnlineUsers()
-		flash( 'there %s %s online user%s:' % \
-				( 'is' if len(online) == 1 else 'are', \
-				  len(online), '' if len(online) == 1 else 's' ) )
+		#online = users.getOnlineUsers()
+		#flash( 'there %s %s online user%s:' % \
+		#		( 'is' if len(online) == 1 else 'are', \
+		#		  len(online), '' if len(online) == 1 else 's' ) )
 
-		for u in online:
-			flash( u )
+		#for u in online:
+		#	flash( u )
 
 		session['user'] = name
 		session['ssid'] = ssid
@@ -317,7 +316,6 @@ def dataPoll():
 
 @app.route('/exec', methods = ['POST'] )
 def execute():
-	print 'START OF EXCECUTE'
 	# check for login!
 	name = session.get( 'user', '' )
 	key = session.get( 'ssid', '' )
@@ -350,4 +348,4 @@ if __name__ == '__main__':
 	t.daemon = True
 	t.start()
 	app.secret_key = os.urandom( 32 )
-	app.run(debug=True, threaded=True, port=8080, host='0.0.0.0')
+	app.run(threaded=True, port=8080, host='0.0.0.0')
