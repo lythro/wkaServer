@@ -6,6 +6,7 @@ import threading
 import os, base64
 
 import serial
+import RPi.GPIO as GPIO
 
 # to switch between real serial communication
 # and some basic dummy data generation
@@ -28,6 +29,35 @@ class Controller(object):
 			print 'BAUDRATE:', port.getBaudrate()
 
 		self.update()
+
+	def registerShutdownHook(self, pinKeepAlive, pinKillSig):
+		''' activates the keepAlive-signal on the given pin
+		    (in other words: sets it to high)
+		    and listens on the kill-signal to initiate a shutdown '''
+		GPIO.setwarnings( False )
+		GPIO.setmode( GPIO.BCM )
+
+		self.pinKeepAlive = pinKeepAlive
+		self.pinKillSig = pinKillSig
+
+		GPIO.setup( self.pinKeepAlive, GPIO.OUT )
+		GPIO.out( self.pinKeepAlive, 1 )
+
+		GPIO.setup( self.pinKillSig, GPIO.IN ) # pullup already installed in hardware
+		GPIO.add_event_detect( self.pinKillSig, GPIO.BOTH, callback = self.__shutdown )
+		
+
+	def __shutdown(self):
+		''' initiate shutdown when killsig is received '''
+		# active low!
+		if not GPIO.input( self.pinKillSig ):
+			# first: get the lock! we dont want to
+			# mess up anything with the control board.
+			with self.lock:
+				os.system( "shutdown -h now" )
+			print 'this should not have happened! why no shutdown..?'
+
+
 
 	def execCommand(self, cmd):
 		x = ''
