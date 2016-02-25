@@ -49,8 +49,7 @@ class Controller(object):
 
 	def __shutdown(self, channel):
 		''' initiate shutdown when killsig is received '''
-		# active low!
-		if not GPIO.input( self.pinKillSig ):
+		if GPIO.input( self.pinKillSig ):
 			# first: get the lock! we dont want to
 			# mess up anything with the control board.
 			with self.lock:
