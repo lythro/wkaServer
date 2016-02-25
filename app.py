@@ -47,7 +47,7 @@ class Controller(object):
 		GPIO.add_event_detect( self.pinKillSig, GPIO.BOTH, callback = self.__shutdown )
 		
 
-	def __shutdown(self):
+	def __shutdown(self, channel):
 		''' initiate shutdown when killsig is received '''
 		# active low!
 		if not GPIO.input( self.pinKillSig ):
