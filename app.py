@@ -374,6 +374,9 @@ def updateLoop():
 
 
 if __name__ == '__main__':
+	keepAlive = 27
+	killSig = 22
+	controller.registerShutdownHook( keepAlive, killSig )
 	t = threading.Thread( target=updateLoop )
 	t.daemon = True
 	t.start()
