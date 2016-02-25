@@ -41,7 +41,7 @@ class Controller(object):
 		self.pinKillSig = pinKillSig
 
 		GPIO.setup( self.pinKeepAlive, GPIO.OUT )
-		GPIO.out( self.pinKeepAlive, 1 )
+		GPIO.output( self.pinKeepAlive, 1 )
 
 		GPIO.setup( self.pinKillSig, GPIO.IN ) # pullup already installed in hardware
 		GPIO.add_event_detect( self.pinKillSig, GPIO.BOTH, callback = self.__shutdown )
