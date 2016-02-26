@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from flask import Flask, request, session, redirect, render_template, jsonify, flash
 
 import time
@@ -306,7 +307,7 @@ class UserManager(object):
 
 #---------
 controller = Controller()
-users = UserManager()
+users = UserManager( '/home/pi/wkaServer/users.txt' )
 #---------
 
 app = Flask(__name__)
