@@ -63,7 +63,6 @@ class Controller(object):
 
 
 	def execCommand(self, cmd):
-		print 'CMD:', cmd
 		x = ''
 		timeout = False
 		with self.lock:
@@ -78,7 +77,6 @@ class Controller(object):
 				x += r
 				# .. 'MUT>' signals end of transmission
 				if x.endswith( 'MUT>\r\n' ):
-					print 'ENDSWITH!', x
 					return x
 		#x += '(something went wrong, a timeout occured!)\n'
 		print 'SOMETHING WENT WRONG! TIMEOUT!'
