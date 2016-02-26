@@ -4,13 +4,17 @@ import time
 import numpy as np
 import threading
 import os, base64
+import sys
 
-import serial
-import RPi.GPIO as GPIO
 
 # to switch between real serial communication
 # and some basic dummy data generation
 NO_MUT = True
+
+if not NO_MUT:
+	import serial
+	import RPi.GPIO as GPIO
+
 
 class Controller(object):
 	def __init__(self):
@@ -211,20 +215,39 @@ class User(object):
 
 
 class UserManager(object):
-	def __init__(self):
+	def __init__(self, fname = 'users.txt'):
 		self.users = {}
 		self.lock = threading.Lock()
 
 		with self.lock:
-			# TODO create users... differently.
-			# especially don't store passwords in
-			# a source file that's publicly available
-			# at github.
-			user = User( 'TestUser1', '123' )
-			self.users[user.name] = user
+			if NO_MUT and False:
+				# testing without direct connection,
+				# create some dummy users
+				user = User( 'TestUser1', '123' )
+				self.users[user.name] = user
 
-			user = User( 'TestUser2', 'abc' )
-			self.users[user.name] = user
+				user = User( 'TestUser2', 'abc' )
+				self.users[user.name] = user
+			else:
+				# read users from file so I don't
+				# accidently push credentials to github
+				try:
+					with open( fname ) as f:
+						for line in f:
+							sp = line.split()
+							if len(sp) != 2:
+								print 'unknown user entry!', line
+								continue
+							else:
+								name, pw = sp
+								user = User( name, pw )
+								self.users[user.name] = user
+				except IOError as e:
+					print e
+					sys.exit( 1 )
+
+				if len(self.users) == 0:
+					print 'WARNING: NO USERS!'
 
 
 
@@ -375,7 +398,10 @@ def updateLoop():
 if __name__ == '__main__':
 	keepAlive = 27
 	killSig = 22
-	controller.registerShutdownHook( keepAlive, killSig )
+	
+	if not NO_MUT:
+		controller.registerShutdownHook( keepAlive, killSig )
+
 	t = threading.Thread( target=updateLoop )
 	t.daemon = True
 	t.start()
