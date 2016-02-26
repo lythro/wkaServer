@@ -9,7 +9,7 @@ import sys
 
 # to switch between real serial communication
 # and some basic dummy data generation
-NO_MUT = True
+NO_MUT = False
 
 if not NO_MUT:
 	import serial
@@ -30,7 +30,7 @@ class Controller(object):
 		if not NO_MUT:
 			self.port = serial.Serial( '/dev/ttyAMA0', timeout=2, \
 										baudrate=9600 )
-			print 'BAUDRATE:', port.getBaudrate()
+			print 'BAUDRATE:', self.port.getBaudrate()
 
 		self.update()
 
@@ -63,13 +63,14 @@ class Controller(object):
 
 
 	def execCommand(self, cmd):
+		print 'CMD:', cmd
 		x = ''
 		timeout = False
 		with self.lock:
-			port.write( cmd )
+			self.port.write( cmd )
 			while True:
 				# read until ..
-				r = port.read(1)
+				r = self.port.read(1)
 				# .. timeout or ..
 				if len(r) < 1:
 					timeout = True
@@ -78,8 +79,9 @@ class Controller(object):
 				# .. 'MUT>' signals end of transmission
 				if x.endswith( 'MUT>\r\n' ):
 					print 'ENDSWITH!', x
-					#break #TODO
-		x += '(something went wrong, a timeout occured!)\n'
+					return x
+		#x += '(something went wrong, a timeout occured!)\n'
+		print 'SOMETHING WENT WRONG! TIMEOUT!'
 		return x
 
 
