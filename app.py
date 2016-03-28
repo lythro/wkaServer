@@ -8,11 +8,19 @@ import os, base64
 import sys
 
 
+# test on pi or at pc?
+ON_PI = True
+
 # to switch between real serial communication
 # and some basic dummy data generation
-NO_MUT = False
+NO_MUT = True
 
-if not NO_MUT:
+# if not on pi, definetly not at MUT
+if not ON_PI:
+	NO_MUT = True
+
+
+if ON_PI:
 	import serial
 	import RPi.GPIO as GPIO
 
@@ -400,7 +408,7 @@ if __name__ == '__main__':
 	keepAlive = 27
 	killSig = 22
 	
-	if not NO_MUT:
+	if ON_PI:
 		controller.registerShutdownHook( keepAlive, killSig )
 
 	t = threading.Thread( target=updateLoop )
